@@ -43,14 +43,6 @@ func ListEC2Instances(region string) ([]EC2Instance, error) {
 				ID:   *instance.InstanceId,
 				Name: name,
 			})
-
-			// instanceName := "Unknown"
-			// for _, tag := range instance.Tags {
-			// 	if *tag.Key == "Name" {
-			// 		instanceName = *tag.Value
-			// 		break
-			// 	}
-			// }
 		}
 	}
 	return instances, nil

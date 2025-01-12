@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/CharonWare/go-aws/internal/aws"
 	"github.com/spf13/cobra"
@@ -21,7 +22,10 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		region := "eu-west-1" // Replace with dynamic input if needed
+		region := os.Getenv("AWS_REGION")
+		if region == "" {
+			region = "eu-west-1" // Default region if the environment variable is not set
+		}
 		instances, err := aws.ListEC2Instances(region)
 		if err != nil {
 			return err

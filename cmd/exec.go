@@ -1,12 +1,13 @@
 /*
 Copyright © 2025 NAME HERE <EMAIL ADDRESS>
-
 */
 package cmd
 
 import (
 	"fmt"
+	"os"
 
+	"github.com/CharonWare/go-aws/internal/aws"
 	"github.com/spf13/cobra"
 )
 
@@ -20,8 +21,21 @@ and usage of using your command. For example:
 Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("exec called")
+	RunE: func(cmd *cobra.Command, args []string) error {
+		region := os.Getenv("AWS_REGION")
+		if region == "" {
+			region = "eu-west-1" // Default region if the environment variable is not set
+		}
+		clusters, err := aws.ListClusters(region)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println("Clusters:")
+		for i, cluster := range clusters {
+			fmt.Printf("%d. %s\n", i+1, cluster)
+		}
+		return nil
 	},
 }
 
