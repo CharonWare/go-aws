@@ -73,14 +73,20 @@ var execCmd = &cobra.Command{
 			return err
 		}
 
-		iiii, _, err := ui.CreatePrompt(containers, "Select a container:")
-		if err != nil {
-			return err
+		// Not all tasks will have multiple containers, if only 1 container is returned then skip the prompt
+		if len(containers) <= 1 {
+			return execToContainer(region, selectedCluster, selectedTask, containers[0])
+		} else {
+			// If there is more than 1 container name then prompt the user for a selection
+			iiii, _, err := ui.CreatePrompt(containers, "Select a container:")
+			if err != nil {
+				return err
+			}
+
+			selectedContainer := containers[iiii]
+
+			return execToContainer(region, selectedCluster, selectedTask, selectedContainer)
 		}
-
-		selectedContainer := containers[iiii]
-
-		return execToContainer(region, selectedCluster, selectedTask, selectedContainer)
 	},
 }
 
