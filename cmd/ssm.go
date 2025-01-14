@@ -25,7 +25,7 @@ var ssmCmd = &cobra.Command{
 			return startSSMSession(args[0])
 		}
 
-		region := os.Getenv("AWS_REGION")
+		region := os.Getenv("AWS_DEFAULT_REGION")
 		if region == "" {
 			region = "eu-west-1" // Default region if the environment variable is not set
 		}
