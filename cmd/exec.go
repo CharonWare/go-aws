@@ -9,7 +9,7 @@ import (
 	"os/exec"
 
 	"github.com/CharonWare/go-aws/internal/aws"
-	"github.com/manifoldco/promptui"
+	"github.com/CharonWare/go-aws/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -17,96 +17,65 @@ import (
 var execCmd = &cobra.Command{
 	Use:   "exec",
 	Short: "Start an ECS Exec session with a specified container",
+	Long: `The exec command will present you a series of interactable and searchable menus
+	that will allow you to select a cluster, service, task, and finally a container which
+	will then be exec'd into. Use with: go-aws exec`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		region := os.Getenv("AWS_DEFAULT_REGION")
 		if region == "" {
 			region = "eu-west-1" // Default region if the environment variable is not set
 		}
+
+		// Search for available ECS clusters in the chosen region
 		clusters, err := aws.ListClusters(region)
 		if err != nil {
 			return err
 		}
 
-		// fmt.Println("Clusters:")
-		// for i, cluster := range clusters {
-		// 	fmt.Printf("%d. %s\n", i+1, cluster)
-		// }
-
-		prompt := promptui.Select{
-			Label: "Select a cluster",
-			Items: clusters,
-			Searcher: func(input string, index int) bool {
-				item := clusters[index]
-				return containsIgnoreCase(item, input)
-			},
-		}
-
-		i, _, err := prompt.Run()
+		// Prompt the user to select a cluster
+		i, _, err := ui.CreatePrompt(clusters, "Select a cluster:")
 		if err != nil {
-			return fmt.Errorf("prompt failed: %w", err)
+			return err
 		}
 
 		selectedCluster := clusters[i]
 
+		// Pass the selected cluster to a list services call to see all services in that cluster
 		services, err := aws.ListServices(region, selectedCluster)
 		if err != nil {
 			return err
 		}
 
-		prompt2 := promptui.Select{
-			Label: "Select a service",
-			Items: services,
-			Searcher: func(input string, index int) bool {
-				item := services[index]
-				return containsIgnoreCase(item, input)
-			},
-		}
-
-		ii, _, err := prompt2.Run()
+		// Prompt the user to select a service
+		ii, _, err := ui.CreatePrompt(services, "Select a service:")
 		if err != nil {
-			return fmt.Errorf("prompt failed: %w", err)
+			return err
 		}
 
 		selectedService := services[ii]
 
+		// Pass the selected cluster and service to a list tasks call to see all tasks in that service
 		tasks, err := aws.ListTasks(region, selectedCluster, selectedService)
 		if err != nil {
 			return err
 		}
 
-		prompt3 := promptui.Select{
-			Label: "Select a task",
-			Items: tasks,
-			Searcher: func(input string, index int) bool {
-				item := tasks[index]
-				return containsIgnoreCase(item, input)
-			},
-		}
-
-		iii, _, err := prompt3.Run()
+		iii, _, err := ui.CreatePrompt(tasks, "Select a task:")
 		if err != nil {
-			return fmt.Errorf("prompt failed: %w", err)
+			return err
 		}
 
 		selectedTask := tasks[iii]
 
+		// Tasks can have multiple containers so we need to describe them to find the container names
 		containers, err := aws.DescribeTasks(region, selectedCluster, selectedTask)
 		if err != nil {
 			return err
 		}
 
-		prompt4 := promptui.Select{
-			Label: "Select a container",
-			Items: containers,
-			Searcher: func(input string, index int) bool {
-				item := containers[index]
-				return containsIgnoreCase(item, input)
-			},
-		}
-
-		iiii, _, err := prompt4.Run()
+		iiii, _, err := ui.CreatePrompt(containers, "Select a container:")
 		if err != nil {
-			return fmt.Errorf("prompt failed: %w", err)
+			return err
 		}
 
 		selectedContainer := containers[iiii]

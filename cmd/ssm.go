@@ -7,10 +7,9 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"strings"
 
 	"github.com/CharonWare/go-aws/internal/aws"
-	"github.com/manifoldco/promptui"
+	"github.com/CharonWare/go-aws/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -30,6 +29,7 @@ var ssmCmd = &cobra.Command{
 			region = "eu-west-1" // Default region if the environment variable is not set
 		}
 
+		// List all EC2 instances in the region
 		instances, err := aws.ListEC2Instances(region)
 		if err != nil {
 			return fmt.Errorf("error listing EC2 instances: %w", err)
@@ -40,6 +40,8 @@ var ssmCmd = &cobra.Command{
 			return nil
 		}
 
+		// Create a map to link the instance IDs with the Name tag of the instance
+		// The Name tag is presented to the user
 		var options []string
 		instanceMap := make(map[string]string)
 		for _, inst := range instances {
@@ -51,30 +53,19 @@ var ssmCmd = &cobra.Command{
 			instanceMap[name] = inst.ID
 		}
 
-		prompt := promptui.Select{
-			Label: "Select an EC2 instance",
-			Items: options,
-			Searcher: func(input string, index int) bool {
-				item := options[index]
-				return containsIgnoreCase(item, input)
-			},
-		}
-
-		i, _, err := prompt.Run()
+		// Prompt the user to choose an EC2
+		i, _, err := ui.CreatePrompt(options, "Select an EC2 instance:")
 		if err != nil {
-			return fmt.Errorf("prompt failed: %w", err)
+			return err
 		}
 
+		// The map is used to allow the user to select the Name tag but pass the instance ID to the SSM function
 		selectedName := options[i]
 		selectedID := instanceMap[selectedName]
 
 		fmt.Printf("%s chosen.\n", selectedName)
 		return startSSMSession(selectedID)
 	},
-}
-
-func containsIgnoreCase(str, substr string) bool {
-	return strings.Contains(strings.ToLower(str), strings.ToLower(substr))
 }
 
 func init() {

@@ -7,6 +7,7 @@ This tool is still being improved.
 ## Usage
 * Currently the tool defaults to `eu-west-1` but this will be overridden if you export your region with the `AWS_DEFAULT_REGION` variable
 * `go-aws ssm` will present you with a list of EC2 instances, once selected it will attempt to connect you to this instance via a session manager connection
+* If you have an instance ID already you can pass it into the ssm argument, `go-aws ssm i-112233445566`
 * `go-aws exec` will allow you to select a cluster, service, task, and then container in that task, it will then attempt to connect via ECS Exec
 
 ## Requirements
