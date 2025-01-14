@@ -73,20 +73,25 @@ var execCmd = &cobra.Command{
 			return err
 		}
 
-		// Not all tasks will have multiple containers, if only 1 container is returned then skip the prompt
-		if len(containers) <= 1 {
-			return execToContainer(region, selectedCluster, selectedTask, containers[0])
-		} else {
-			// If there is more than 1 container name then prompt the user for a selection
-			iiii, _, err := ui.CreatePrompt(containers, "Select a container:")
-			if err != nil {
-				return err
-			}
-
-			selectedContainer := containers[iiii]
-
-			return execToContainer(region, selectedCluster, selectedTask, selectedContainer)
+		// If there are no containers, return an error
+		if len(containers) == 0 {
+			return fmt.Errorf("no containers available for the selected task")
 		}
+
+		// If only one container exists, skip the prompt
+		if len(containers) == 1 {
+			return execToContainer(region, selectedCluster, selectedTask, containers[0])
+		}
+
+		// If there are multiple containers, prompt the user for selection
+		iiii, _, err := ui.CreatePrompt(containers, "Select a container:")
+		if err != nil {
+			return err
+		}
+
+		selectedContainer := containers[iiii]
+		return execToContainer(region, selectedCluster, selectedTask, selectedContainer)
+
 	},
 }
 
