@@ -10,7 +10,7 @@ import (
 )
 
 func loadAWSConfig(region string) (aws.Config, error) {
-	return config.LoadDefaultConfig(context.TODO(), config.WithRegion(region))
+	return config.LoadDefaultConfig(context.Background(), config.WithRegion(region))
 }
 
 func newECSClient(cfg aws.Config) *ecs.Client {
@@ -26,12 +26,17 @@ func ListClusters(region string) (clusters []string, err error) {
 	// Create ECS client
 	client := newECSClient(cfg)
 	input := &ecs.ListClustersInput{}
-	output, err := client.ListClusters(context.TODO(), input)
-	if err != nil {
-		return nil, fmt.Errorf("unable to list ECS clusters: %v", err)
+
+	// Use a paginator to ensure we see all the results
+	paginator := ecs.NewListClustersPaginator(client, input)
+	for paginator.HasMorePages() {
+		page, err := paginator.NextPage(context.Background())
+		if err != nil {
+			return nil, fmt.Errorf("unable to list ECS clusters: %v", err)
+		}
+		clusters = append(clusters, page.ClusterArns...)
 	}
 
-	clusters = append(clusters, output.ClusterArns...)
 	return clusters, nil
 }
 
@@ -46,12 +51,17 @@ func ListServices(region, cluster string) (services []string, err error) {
 	input := &ecs.ListServicesInput{
 		Cluster: aws.String(cluster),
 	}
-	output, err := client.ListServices(context.TODO(), input)
-	if err != nil {
-		return nil, fmt.Errorf("unable to list ECS services: %v", err)
+
+	// Use a paginator to ensure we see all the results
+	paginator := ecs.NewListServicesPaginator(client, input)
+	for paginator.HasMorePages() {
+		page, err := paginator.NextPage(context.Background())
+		if err != nil {
+			return nil, fmt.Errorf("unable to list ECS services: %v", err)
+		}
+		services = append(services, page.ServiceArns...)
 	}
 
-	services = append(services, output.ServiceArns...)
 	return services, nil
 }
 
@@ -67,12 +77,17 @@ func ListTasks(region, cluster, service string) (tasks []string, err error) {
 		Cluster:     aws.String(cluster),
 		ServiceName: aws.String(service),
 	}
-	output, err := client.ListTasks(context.TODO(), input)
-	if err != nil {
-		return nil, fmt.Errorf("unable to list ECS tasks: %v", err)
+
+	// Use a paginator to ensure we see all the results
+	paginator := ecs.NewListTasksPaginator(client, input)
+	for paginator.HasMorePages() {
+		page, err := paginator.NextPage(context.Background())
+		if err != nil {
+			return nil, fmt.Errorf("unable to list ECS tasks: %v", err)
+		}
+		tasks = append(tasks, page.TaskArns...)
 	}
 
-	tasks = append(tasks, output.TaskArns...)
 	return tasks, nil
 }
 
@@ -89,7 +104,7 @@ func DescribeTasks(region, cluster, task string) (availableContainers []string, 
 		Tasks:   []string{task},
 	}
 
-	output, err := client.DescribeTasks(context.TODO(), input)
+	output, err := client.DescribeTasks(context.Background(), input)
 	if err != nil {
 		return nil, fmt.Errorf("unable to describe tasks: %v", err)
 	}

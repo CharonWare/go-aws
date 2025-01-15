@@ -110,7 +110,14 @@ func init() {
 }
 
 func execToContainer(region, cluster, taskArn, container string) error {
-	cmd := exec.Command("aws", "ecs", "execute-command", "--cluster", cluster, "--task", taskArn, "--container", container, "--interactive", "--command", "/bin/bash", "--region", region)
+	cmd := exec.Command("aws", "ecs", "execute-command",
+		"--cluster", cluster,
+		"--task", taskArn,
+		"--container", container,
+		"--interactive",
+		"--command", "/bin/bash",
+		"--region", region,
+	)
 
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout

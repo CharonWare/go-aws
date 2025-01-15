@@ -23,27 +23,31 @@ func ListEC2Instances(region string) ([]EC2Instance, error) {
 	// Create EC2 client
 	client := ec2.NewFromConfig(cfg)
 	input := &ec2.DescribeInstancesInput{}
-	output, err := client.DescribeInstances(context.TODO(), input)
-	if err != nil {
-		return nil, fmt.Errorf("unable to describe EC2 instances: %v", err)
-	}
-
 	var instances []EC2Instance
 
-	for _, reservation := range output.Reservations {
-		for _, instance := range reservation.Instances {
-			var name string
-			for _, tag := range instance.Tags {
-				if *tag.Key == "Name" {
-					name = *tag.Value
-					break
+	// Use a paginator to ensure we see all the results
+	paginator := ec2.NewDescribeInstancesPaginator(client, input)
+	for paginator.HasMorePages() {
+		page, err := paginator.NextPage(context.Background())
+		if err != nil {
+			return nil, fmt.Errorf("unable to describe EC2 instances: %v", err)
+		}
+		for _, reservation := range page.Reservations {
+			for _, instance := range reservation.Instances {
+				var name string
+				for _, tag := range instance.Tags {
+					if *tag.Key == "Name" {
+						name = *tag.Value
+						break
+					}
 				}
+				instances = append(instances, EC2Instance{
+					ID:   *instance.InstanceId,
+					Name: name,
+				})
 			}
-			instances = append(instances, EC2Instance{
-				ID:   *instance.InstanceId,
-				Name: name,
-			})
 		}
 	}
+
 	return instances, nil
 }
