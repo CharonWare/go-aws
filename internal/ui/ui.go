@@ -11,6 +11,7 @@ func CreatePrompt(items []string, label string) (int, string, error) {
 	prompt := promptui.Select{
 		Label: label,
 		Items: items,
+		Size:  30,
 		Searcher: func(input string, index int) bool {
 			item := items[index]
 			return containsIgnoreCase(item, input)
