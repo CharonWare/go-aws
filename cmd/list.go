@@ -14,7 +14,7 @@ import (
 // listCmd represents the list command
 var listCmd = &cobra.Command{
 	Use:   "list",
-	Short: "List EC2 instances in this account.",
+	Short: "List EC2 instances in this account",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		region := os.Getenv("AWS_DEFAULT_REGION")
 		if region == "" {

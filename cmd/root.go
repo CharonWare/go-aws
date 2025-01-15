@@ -24,13 +24,11 @@ import (
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "go-aws",
-	Short: "A brief description of your application",
-	Long: `A longer description that spans multiple lines and likely contains
-examples and usage of using your application. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "go-aws is an AWS CLI wrapper that aims to make various tasks more simple.",
+	Long: `go-aws abstracts some of the difficulties and repeat commands away from the
+	general experience of using the AWS CLI. Rather than relying on memory or having to
+	use multiple queries to find the information you need, go-aws finds this information
+	for you and enables you to work faster.`,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	// Run: func(cmd *cobra.Command, args []string) { },
