@@ -2,6 +2,7 @@ package aws
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/CharonWare/go-aws/internal/shared"
@@ -164,7 +165,12 @@ func ListTasks(region, cluster, service string) (tasks []string, err error) {
 	return tasks, nil
 }
 
-func DescribeTasks(region, cluster, task string) (availableContainers []string, err error) {
+type taskInfo struct {
+	Name              string
+	TaskDefinitionArn string
+}
+
+func DescribeTasks(region, cluster, task string) ([]taskInfo, error) {
 	cfg, err := shared.LoadAWSConfig(region)
 	if err != nil {
 		return nil, fmt.Errorf("unable to load AWS configuration: %v", err)
@@ -182,31 +188,41 @@ func DescribeTasks(region, cluster, task string) (availableContainers []string, 
 		return nil, fmt.Errorf("unable to describe tasks: %v", err)
 	}
 
+	var availableContainers []taskInfo
+
 	for _, outputTask := range output.Tasks {
+		taskDefinitionArn := outputTask.TaskDefinitionArn
 		for _, container := range outputTask.Containers {
-			availableContainers = append(availableContainers, aws.ToString(container.Name))
+			availableContainers = append(availableContainers, taskInfo{
+				TaskDefinitionArn: *taskDefinitionArn,
+				Name:              *container.Name,
+			})
 		}
 	}
 
 	return availableContainers, nil
 }
 
-// func DescribeService(region, cluster, service string) error {
-// 	cfg, err := shared.LoadAWSConfig(region)
-// 	if err != nil {
-// 		return err
-// 	}
+func DescribeTaskDefinition(region, taskDefinition string) (string, error) {
+	cfg, err := shared.LoadAWSConfig(region)
+	if err != nil {
+		return "", fmt.Errorf("unable to load AWS configuration: %v", err)
+	}
 
-// 	client := newECSClient(cfg)
-// 	input := &ecs.DescribeServicesInput{
-// 		Cluster: aws.String(cluster),
-// 		Services: []string{service},
-// 	}
+	client := newECSClient(cfg)
+	input := &ecs.DescribeTaskDefinitionInput{
+		TaskDefinition: &taskDefinition,
+	}
 
-// 	output, err := client.DescribeServices(context.Background(), input)
-// 	if err != nil {
-// 		return fmt.Errorf("unable to describe ECS service: %v", err)
-// 	}
+	output, err := client.DescribeTaskDefinition(context.Background(), input)
+	if err != nil {
+		return "", fmt.Errorf("unable to describe task definition: %v", err)
+	}
 
-// 	for outputService := range output.Services {}
-// }
+	outputJSON, err := json.MarshalIndent(output, "", " ")
+	if err != nil {
+		return "", fmt.Errorf("unable to marshal task definition output: %v", err)
+	}
+
+	return string(outputJSON), nil
+}

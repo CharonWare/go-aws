@@ -41,28 +41,10 @@ var ecsCmd = &cobra.Command{
 		selectedCluster := clusters[i]
 
 		// Check if the describe-cluster flag is set and proceed based on that
-		describeCluster, _ := cmd.Flags().GetBool("describe-cluster")
-		if describeCluster {
-			output, err := aws.DescribeCluster(region, selectedCluster)
-			if err != nil {
-				return err
-			}
-			for _, clusterInfo := range output {
-				fmt.Printf(`
-Name:            %s
-Container Hosts: %d
-Running Tasks:   %d
-Pending Tasks:   %d
-Services:        %d
-`,
-					clusterInfo.Name,
-					clusterInfo.ContainerHosts,
-					clusterInfo.RunningTasks,
-					clusterInfo.PendingTasks,
-					clusterInfo.Services,
-				)
-				os.Exit(0)
-			}
+		describeClusterBool, _ := cmd.Flags().GetBool("describe-cluster")
+		if describeClusterBool {
+			describeCluster(region, selectedCluster)
+			os.Exit(0)
 		}
 
 		// Pass the selected cluster to a list services call to see all services in that cluster
@@ -80,31 +62,11 @@ Services:        %d
 		selectedService := services[ii]
 
 		// Check if the describe-service flag is set and proceed based on that
-		describeService, _ := cmd.Flags().GetBool("describe-service")
-		if describeService {
-			output, err := aws.DescribeService(region, selectedCluster, selectedService)
-			if err != nil {
-				return err
-			}
-			for _, serviceInfo := range output {
-				fmt.Printf(`
-Name:       %s
-Desired:    %d
-Running:    %d
-Pending:    %d
-LaunchType: %s
-`,
-					serviceInfo.Name,
-					serviceInfo.Desired,
-					serviceInfo.Running,
-					serviceInfo.Pending,
-					serviceInfo.LaunchType,
-				)
-				os.Exit(0)
-			}
+		describeServiceBool, _ := cmd.Flags().GetBool("describe-service")
+		if describeServiceBool {
+			describeService(region, selectedCluster, selectedService)
+			os.Exit(0)
 		}
-
-		// if service flag is set, stop here and describe this service
 
 		// Pass the selected cluster and service to a list tasks call to see all tasks in that service
 		tasks, err := aws.ListTasks(region, selectedCluster, selectedService)
@@ -119,8 +81,6 @@ LaunchType: %s
 
 		selectedTask := tasks[iii]
 
-		// if task flag is set, stop here and describe this task
-
 		// Tasks can have multiple containers so we need to describe them to find the container names
 		containers, err := aws.DescribeTasks(region, selectedCluster, selectedTask)
 		if err != nil {
@@ -132,19 +92,36 @@ LaunchType: %s
 			return fmt.Errorf("no containers available for the selected task")
 		}
 
-		// If only one container exists, skip the prompt
-		if len(containers) == 1 {
-			return execToContainer(region, selectedCluster, selectedTask, containers[0])
+		// If there are multiple containers, prompt the user for selection
+		containerNames := make([]string, len(containers))
+		for i, container := range containers {
+			containerNames[i] = container.Name
 		}
 
-		// If there are multiple containers, prompt the user for selection
-		iiii, _, err := ui.CreatePrompt(containers, "Select a container:")
+		// if task-definition flag is set, stop here and describe the task-definition for this task
+		taskDefinitionBool, _ := cmd.Flags().GetBool("task-definition")
+		if taskDefinitionBool {
+			output, err := aws.DescribeTaskDefinition(region, containers[0].TaskDefinitionArn)
+			if err != nil {
+				return err
+			}
+			fmt.Println(output)
+			os.Exit(0)
+		}
+
+		// // If only one container exists, skip the prompt
+		if len(containerNames) == 1 {
+			return execToContainer(region, selectedCluster, selectedTask, containers[0].Name)
+		}
+
+		iiii, _, err := ui.CreatePrompt(containerNames, "Select a container:")
 		if err != nil {
 			return err
 		}
 
 		selectedContainer := containers[iiii]
-		return execToContainer(region, selectedCluster, selectedTask, selectedContainer)
+
+		return execToContainer(region, selectedCluster, selectedTask, selectedContainer.Name)
 
 	},
 }
@@ -184,6 +161,52 @@ func execToContainer(region, cluster, taskArn, container string) error {
 	fmt.Printf("Starting ECS Exec session for task: %s\n", taskArn)
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to start ECS Exec session: %w", err)
+	}
+	return nil
+}
+
+func describeCluster(region, cluster string) error {
+	output, err := aws.DescribeCluster(region, cluster)
+	if err != nil {
+		return err
+	}
+	for _, clusterInfo := range output {
+		fmt.Printf(`
+Name:            %s
+Container Hosts: %d
+Running Tasks:   %d
+Pending Tasks:   %d
+Services:        %d
+`,
+			clusterInfo.Name,
+			clusterInfo.ContainerHosts,
+			clusterInfo.RunningTasks,
+			clusterInfo.PendingTasks,
+			clusterInfo.Services,
+		)
+	}
+	return nil
+}
+
+func describeService(region, cluster, service string) error {
+	output, err := aws.DescribeService(region, cluster, service)
+	if err != nil {
+		return err
+	}
+	for _, serviceInfo := range output {
+		fmt.Printf(`
+Name:       %s
+Desired:    %d
+Running:    %d
+Pending:    %d
+LaunchType: %s
+`,
+			serviceInfo.Name,
+			serviceInfo.Desired,
+			serviceInfo.Running,
+			serviceInfo.Pending,
+			serviceInfo.LaunchType,
+		)
 	}
 	return nil
 }
