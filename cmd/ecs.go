@@ -154,7 +154,7 @@ func init() {
 
 	ecsCmd.Flags().Bool("describe-cluster", false, "Describe the selected cluster")
 	ecsCmd.Flags().Bool("describe-service", false, "Describe the selected service")
-	ecsCmd.Flags().Bool("describe-task", false, "Describe the selected task")
+	ecsCmd.Flags().Bool("task-definition", false, "Show the task definition for the selected task")
 
 	// Here you will define your flags and configuration settings.
 

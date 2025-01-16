@@ -1,6 +1,6 @@
 # go-aws
 
-`go-aws` makes it easier to use AWS SSM Session Manager and ECS Exec on the cli. These commands can be tedious because of needing to find out instance IDs and ECS task IDs in order to use them. This tool provides an interactive menu to select your EC2 instance, or your cluster->service->task->container (if there is only one container in your task it will skip this prompt).
+`go-aws` provides an alternative to the AWS CLI and speeds up administration by utilising the AWS Go SDK. Session manager and ECS Exec connections can be initiated using `go-aws` without having to run multiple queries or recall all the details of your infrastructure. `go-aws` will prompt you with interactive menus that will allow you to select which clusters, services, autoscaling groups, instances etc to connect to, describe, or update.
 
 This tool is still being improved.
 
