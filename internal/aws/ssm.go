@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/CharonWare/go-aws/internal/shared"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 )
 
@@ -15,7 +15,7 @@ type EC2Instance struct {
 
 func ListEC2Instances(region string) ([]EC2Instance, error) {
 	// Load AWS configuration
-	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion(region))
+	cfg, err := shared.LoadAWSConfig(region)
 	if err != nil {
 		return nil, fmt.Errorf("unable to load AWS configuration: %v", err)
 	}

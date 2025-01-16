@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/CharonWare/go-aws/internal/shared"
 	"github.com/aws/aws-sdk-go-v2/service/autoscaling"
 )
 
@@ -15,7 +16,7 @@ type ASG struct {
 }
 
 func DescribeASGs(region string) ([]ASG, error) {
-	cfg, err := loadAWSConfig(region)
+	cfg, err := shared.LoadAWSConfig(region)
 	if err != nil {
 		return nil, fmt.Errorf("unable to load AWS configuration: %v", err)
 	}

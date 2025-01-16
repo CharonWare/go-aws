@@ -14,12 +14,12 @@ import (
 )
 
 // execCmd represents the exec command
-var execCmd = &cobra.Command{
-	Use:   "exec",
+var ecsCmd = &cobra.Command{
+	Use:   "ecs",
 	Short: "Start an ECS Exec session with a specified container",
 	Long: `The exec command will present you a series of interactable and searchable menus
 	that will allow you to select a cluster, service, task, and finally a container which
-	will then be exec'd into. Use with: go-aws exec`,
+	will then be exec'd into. Use with: go-aws ecs`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		region := os.Getenv("AWS_DEFAULT_REGION")
 		if region == "" {
@@ -40,6 +40,31 @@ var execCmd = &cobra.Command{
 
 		selectedCluster := clusters[i]
 
+		// Check if the describe-cluster flag is set and proceed based on that
+		describeCluster, _ := cmd.Flags().GetBool("describe-cluster")
+		if describeCluster {
+			output, err := aws.DescribeCluster(region, selectedCluster)
+			if err != nil {
+				return err
+			}
+			for _, clusterInfo := range output {
+				fmt.Printf(`
+Name:            %s
+Container Hosts: %d
+Running Tasks:   %d
+Pending Tasks:   %d
+Services:        %d
+`,
+					clusterInfo.Name,
+					clusterInfo.ContainerHosts,
+					clusterInfo.RunningTasks,
+					clusterInfo.PendingTasks,
+					clusterInfo.Services,
+				)
+				os.Exit(0)
+			}
+		}
+
 		// Pass the selected cluster to a list services call to see all services in that cluster
 		services, err := aws.ListServices(region, selectedCluster)
 		if err != nil {
@@ -54,6 +79,33 @@ var execCmd = &cobra.Command{
 
 		selectedService := services[ii]
 
+		// Check if the describe-service flag is set and proceed based on that
+		describeService, _ := cmd.Flags().GetBool("describe-service")
+		if describeService {
+			output, err := aws.DescribeService(region, selectedCluster, selectedService)
+			if err != nil {
+				return err
+			}
+			for _, serviceInfo := range output {
+				fmt.Printf(`
+Name:       %s
+Desired:    %d
+Running:    %d
+Pending:    %d
+LaunchType: %s
+`,
+					serviceInfo.Name,
+					serviceInfo.Desired,
+					serviceInfo.Running,
+					serviceInfo.Pending,
+					serviceInfo.LaunchType,
+				)
+				os.Exit(0)
+			}
+		}
+
+		// if service flag is set, stop here and describe this service
+
 		// Pass the selected cluster and service to a list tasks call to see all tasks in that service
 		tasks, err := aws.ListTasks(region, selectedCluster, selectedService)
 		if err != nil {
@@ -66,6 +118,8 @@ var execCmd = &cobra.Command{
 		}
 
 		selectedTask := tasks[iii]
+
+		// if task flag is set, stop here and describe this task
 
 		// Tasks can have multiple containers so we need to describe them to find the container names
 		containers, err := aws.DescribeTasks(region, selectedCluster, selectedTask)
@@ -96,7 +150,11 @@ var execCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(execCmd)
+	rootCmd.AddCommand(ecsCmd)
+
+	ecsCmd.Flags().Bool("describe-cluster", false, "Describe the selected cluster")
+	ecsCmd.Flags().Bool("describe-service", false, "Describe the selected service")
+	ecsCmd.Flags().Bool("describe-task", false, "Describe the selected task")
 
 	// Here you will define your flags and configuration settings.
 

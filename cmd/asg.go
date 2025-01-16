@@ -33,7 +33,20 @@ var asgCmd = &cobra.Command{
 		}
 
 		for _, asg := range groups {
-			fmt.Printf("----------\nName: %s\nMinSize: %d\nMaxSize: %d\nDesiredCapacity: %d\n----------\n\n", asg.Name, asg.MinSize, asg.MaxSize, asg.DesiredCapacity)
+			fmt.Printf(`
+----------
+Name:            %s
+MinSize:         %d
+MaxSize:         %d
+DesiredCapacity: %d
+----------
+
+`,
+				asg.Name,
+				asg.MinSize,
+				asg.MaxSize,
+				asg.DesiredCapacity,
+			)
 		}
 		return nil
 	},

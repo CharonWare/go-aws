@@ -4,21 +4,17 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/CharonWare/go-aws/internal/shared"
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/ecs"
 )
-
-func loadAWSConfig(region string) (aws.Config, error) {
-	return config.LoadDefaultConfig(context.Background(), config.WithRegion(region))
-}
 
 func newECSClient(cfg aws.Config) *ecs.Client {
 	return ecs.NewFromConfig(cfg)
 }
 
 func ListClusters(region string) (clusters []string, err error) {
-	cfg, err := loadAWSConfig(region)
+	cfg, err := shared.LoadAWSConfig(region)
 	if err != nil {
 		return nil, fmt.Errorf("unable to load AWS configuration: %v", err)
 	}
@@ -40,8 +36,46 @@ func ListClusters(region string) (clusters []string, err error) {
 	return clusters, nil
 }
 
+type describeCluster struct {
+	Name           string
+	ContainerHosts int32
+	RunningTasks   int32
+	PendingTasks   int32
+	Services       int32
+}
+
+func DescribeCluster(region, cluster string) ([]describeCluster, error) {
+	cfg, err := shared.LoadAWSConfig(region)
+	if err != nil {
+		return nil, fmt.Errorf("unable to load AWS configuration: %v", err)
+	}
+
+	client := newECSClient(cfg)
+	input := &ecs.DescribeClustersInput{
+		Clusters: []string{cluster},
+	}
+
+	output, err := client.DescribeClusters(context.Background(), input)
+	if err != nil {
+		return nil, fmt.Errorf("unable to describe cluster: %v", err)
+	}
+
+	var chosenCluster []describeCluster
+
+	for _, clusters := range output.Clusters {
+		chosenCluster = append(chosenCluster, describeCluster{
+			Name:           *clusters.ClusterName,
+			ContainerHosts: clusters.RegisteredContainerInstancesCount,
+			RunningTasks:   clusters.RunningTasksCount,
+			Services:       clusters.ActiveServicesCount,
+		})
+	}
+
+	return chosenCluster, nil
+}
+
 func ListServices(region, cluster string) (services []string, err error) {
-	cfg, err := loadAWSConfig(region)
+	cfg, err := shared.LoadAWSConfig(region)
 	if err != nil {
 		return nil, fmt.Errorf("unable to load AWS configuration: %v", err)
 	}
@@ -65,8 +99,47 @@ func ListServices(region, cluster string) (services []string, err error) {
 	return services, nil
 }
 
+type describeService struct {
+	Name       string
+	Desired    int32
+	Running    int32
+	Pending    int32
+	LaunchType string
+}
+
+func DescribeService(region, cluster, service string) ([]describeService, error) {
+	cfg, err := shared.LoadAWSConfig(region)
+	if err != nil {
+		return nil, fmt.Errorf("unable to load AWS configuration: %v", err)
+	}
+
+	client := newECSClient(cfg)
+	input := &ecs.DescribeServicesInput{
+		Cluster:  aws.String(cluster),
+		Services: []string{service},
+	}
+
+	output, err := client.DescribeServices(context.Background(), input)
+	if err != nil {
+		return nil, fmt.Errorf("unable to describe service: %v", err)
+	}
+
+	var chosenService []describeService
+
+	for _, i := range output.Services {
+		chosenService = append(chosenService, describeService{
+			Name:       *i.ServiceName,
+			Desired:    i.DesiredCount,
+			Running:    i.RunningCount,
+			Pending:    i.PendingCount,
+			LaunchType: string(i.LaunchType),
+		})
+	}
+	return chosenService, nil
+}
+
 func ListTasks(region, cluster, service string) (tasks []string, err error) {
-	cfg, err := loadAWSConfig(region)
+	cfg, err := shared.LoadAWSConfig(region)
 	if err != nil {
 		return nil, fmt.Errorf("unable to load AWS configuration: %v", err)
 	}
@@ -92,7 +165,7 @@ func ListTasks(region, cluster, service string) (tasks []string, err error) {
 }
 
 func DescribeTasks(region, cluster, task string) (availableContainers []string, err error) {
-	cfg, err := loadAWSConfig(region)
+	cfg, err := shared.LoadAWSConfig(region)
 	if err != nil {
 		return nil, fmt.Errorf("unable to load AWS configuration: %v", err)
 	}
@@ -117,3 +190,23 @@ func DescribeTasks(region, cluster, task string) (availableContainers []string, 
 
 	return availableContainers, nil
 }
+
+// func DescribeService(region, cluster, service string) error {
+// 	cfg, err := shared.LoadAWSConfig(region)
+// 	if err != nil {
+// 		return err
+// 	}
+
+// 	client := newECSClient(cfg)
+// 	input := &ecs.DescribeServicesInput{
+// 		Cluster: aws.String(cluster),
+// 		Services: []string{service},
+// 	}
+
+// 	output, err := client.DescribeServices(context.Background(), input)
+// 	if err != nil {
+// 		return fmt.Errorf("unable to describe ECS service: %v", err)
+// 	}
+
+// 	for outputService := range output.Services {}
+// }
