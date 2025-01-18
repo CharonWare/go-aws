@@ -131,9 +131,9 @@ var ecsCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(ecsCmd)
 
-	ecsCmd.Flags().Bool("describe-cluster", false, "Describe the selected cluster")
-	ecsCmd.Flags().Bool("describe-service", false, "Describe the selected service")
-	ecsCmd.Flags().Bool("task-definition", false, "Show the task definition for the selected task")
+	ecsCmd.Flags().BoolP("describe-cluster", "c", false, "Describe the selected cluster")
+	ecsCmd.Flags().BoolP("describe-service", "s", false, "Describe the selected service")
+	ecsCmd.Flags().BoolP("task-definition", "t", false, "Show the task definition for the selected task")
 
 	// Here you will define your flags and configuration settings.
 
