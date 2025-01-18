@@ -13,6 +13,7 @@ This tool is still being improved.
 * AWS account credentials
 * Your EC2 instances must be capable of receiving session manager connections
 * Your ECS tasks must be set up for ECS Exec
+* AWS CLI v2, currently this is required because `go-aws` uses it as a wrapper for the session manager and execute command connections
 
 ## Installation
 1) Clone the repo

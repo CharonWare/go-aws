@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"os/signal"
 
 	"github.com/CharonWare/go-aws/internal/aws"
 	"github.com/CharonWare/go-aws/internal/ui"
@@ -114,6 +115,7 @@ var ecsCmd = &cobra.Command{
 			return execToContainer(region, selectedCluster, selectedTask, containers[0].Name)
 		}
 
+		// Otherwise, select a container to exec to
 		iiii, _, err := ui.CreatePrompt(containerNames, "Select a container:")
 		if err != nil {
 			return err
@@ -158,9 +160,38 @@ func execToContainer(region, cluster, taskArn, container string) error {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
+	// Create a signal channel to forward SIGINT / Ctrl+C to the container
+	signalChannel := make(chan os.Signal, 1)
+	signal.Notify(signalChannel, os.Interrupt)
+
+	go func() {
+		for sig := range signalChannel {
+			if sig == os.Interrupt {
+				// Forward SIGINT to subprocess
+				if cmd.Process != nil {
+					_ = cmd.Process.Signal(os.Interrupt)
+				}
+			}
+		}
+	}()
+
 	fmt.Printf("Starting ECS Exec session for task: %s\n", taskArn)
-	if err := cmd.Run(); err != nil {
+	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("failed to start ECS Exec session: %w", err)
+	}
+
+	// Wait for the command to finish
+	err := cmd.Wait()
+
+	// Stop listening for signals after the command exits
+	signal.Stop(signalChannel)
+	close(signalChannel)
+
+	if err != nil {
+		if exitError, ok := err.(*exec.ExitError); ok && !exitError.Success() {
+			return fmt.Errorf("container session exited with error: %v", exitError)
+		}
+		return fmt.Errorf("failed to execute command: %w", err)
 	}
 	return nil
 }

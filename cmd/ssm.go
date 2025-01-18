@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"os/signal"
 
 	"github.com/CharonWare/go-aws/internal/aws"
 	"github.com/CharonWare/go-aws/internal/ui"
@@ -90,9 +91,38 @@ func startSSMSession(instanceID string) error {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
+	// Create a signal channel
+	signalChannel := make(chan os.Signal, 1)
+	signal.Notify(signalChannel, os.Interrupt)
+
+	go func() {
+		for sig := range signalChannel {
+			if sig == os.Interrupt {
+				// Forward SIGINT to subprocess
+				if cmd.Process != nil {
+					_ = cmd.Process.Signal(os.Interrupt)
+				}
+			}
+		}
+	}()
+
 	fmt.Printf("Starting SSM session for instance: %s\n", instanceID)
-	if err := cmd.Run(); err != nil {
+	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("failed to start SSM session: %w", err)
+	}
+
+	// Wait for the command to finish
+	err := cmd.Wait()
+
+	// Stop listening for signals after the command exits
+	signal.Stop(signalChannel)
+	close(signalChannel)
+
+	if err != nil {
+		if exitError, ok := err.(*exec.ExitError); ok && !exitError.Success() {
+			return fmt.Errorf("session exited with error: %v", exitError)
+		}
+		return fmt.Errorf("failed to create session: %w", err)
 	}
 	return nil
 }
