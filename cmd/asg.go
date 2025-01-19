@@ -15,8 +15,8 @@ import (
 var asgCmd = &cobra.Command{
 	Use:   "asg",
 	Short: "Describes the scaling values of the ASGs in the current account and region",
-	Long: `Provides Name, MinSize, MaxSize and DesiredCapacity for each autoscaling
-	group in the current account and region.`,
+	Long: `Provides Name, MinSize, MaxSize, DesiredCapacity, and the AVG CPU% (over the 
+	last 5 minutes) for each autoscaling group in the current account and region.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		region := os.Getenv("AWS_DEFAULT_REGION")
 		if region == "" {

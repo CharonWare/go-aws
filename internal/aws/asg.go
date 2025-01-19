@@ -34,6 +34,7 @@ func DescribeASGs(region string) ([]ASG, error) {
 	endTime := time.Now()
 
 	var groups []ASG
+	var failedASGs []string // To track ASGs with no datapoints
 
 	for paginator.HasMorePages() {
 		page, err := paginator.NextPage(context.Background())
@@ -55,9 +56,12 @@ func DescribeASGs(region string) ([]ASG, error) {
 				Period:     300,
 				Statistics: []types.Statistic{types.StatisticAverage},
 			}
+			// Get the average CPU usage for the last 5 min
 			output, err := GetMetricStats(region, metric)
 			if err != nil {
-				return nil, fmt.Errorf("error: %v", err)
+				// Log error and skip the ASG
+				failedASGs = append(failedASGs, *AutoScalingGroups.AutoScalingGroupName)
+				continue
 			} else {
 				groups = append(groups, ASG{
 					Name:            *AutoScalingGroups.AutoScalingGroupName,
@@ -69,5 +73,10 @@ func DescribeASGs(region string) ([]ASG, error) {
 			}
 		}
 	}
+	// log failed ASGs for user visibility
+	if len(failedASGs) > 0 {
+		fmt.Printf("Warning: No datapoints found for the following Auto Scaling Groups: %v\n", failedASGs)
+	}
+
 	return groups, nil
 }

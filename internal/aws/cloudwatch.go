@@ -44,7 +44,7 @@ func GetMetricStats(region string, m *MetricStats) (float64, error) {
 	}
 
 	if len(output.Datapoints) == 0 {
-		return 0, fmt.Errorf("no datapoints found for the specified metric")
+		return 0, fmt.Errorf("no datapoints found for metric %s with dimensions %v", *input.MetricName, input.Dimensions)
 	}
 
 	var sum float64
