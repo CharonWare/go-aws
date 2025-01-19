@@ -17,7 +17,7 @@ import (
 // execCmd represents the exec command
 var ecsCmd = &cobra.Command{
 	Use:   "ecs",
-	Short: "Start an ECS Exec session with a specified container",
+	Short: "Start an ECS Exec session with a specified container, or describe ECS resources",
 	Long: `The exec command will present you a series of interactable and searchable menus
 	that will allow you to select a cluster, service, task, and finally a container which
 	will then be exec'd into. Use with: go-aws ecs`,
@@ -208,12 +208,14 @@ Container Hosts: %d
 Running Tasks:   %d
 Pending Tasks:   %d
 Services:        %d
+AVG CPU (5 min): %.1f%%
 `,
 			clusterInfo.Name,
 			clusterInfo.ContainerHosts,
 			clusterInfo.RunningTasks,
 			clusterInfo.PendingTasks,
 			clusterInfo.Services,
+			clusterInfo.AVGCPU,
 		)
 	}
 	return nil
@@ -226,17 +228,19 @@ func describeService(region, cluster, service string) error {
 	}
 	for _, serviceInfo := range output {
 		fmt.Printf(`
-Name:       %s
-Desired:    %d
-Running:    %d
-Pending:    %d
-LaunchType: %s
+Name:            %s
+Desired:         %d
+Running:         %d
+Pending:         %d
+LaunchType:      %s
+AVG CPU (5 min): %.1f%%
 `,
 			serviceInfo.Name,
 			serviceInfo.Desired,
 			serviceInfo.Running,
 			serviceInfo.Pending,
 			serviceInfo.LaunchType,
+			serviceInfo.AVGCPU,
 		)
 	}
 	return nil

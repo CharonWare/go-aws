@@ -24,7 +24,7 @@ import (
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:     "go-aws",
-	Version: "0.1.3",
+	Version: "0.1.4",
 	Short:   "go-aws is an AWS CLI wrapper that aims to make various tasks more simple.",
 	Long: `go-aws abstracts some of the difficulties and repeat commands away from the
 	general experience of using the AWS CLI. Rather than relying on memory or having to

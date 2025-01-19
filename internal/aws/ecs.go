@@ -4,11 +4,32 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
+	"time"
 
 	"github.com/CharonWare/go-aws/internal/shared"
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatch/types"
 	"github.com/aws/aws-sdk-go-v2/service/ecs"
 )
+
+type describeCluster struct {
+	Name           string
+	ContainerHosts int32
+	RunningTasks   int32
+	PendingTasks   int32
+	Services       int32
+	AVGCPU         float64
+}
+
+type describeService struct {
+	Name       string
+	Desired    int32
+	Running    int32
+	Pending    int32
+	LaunchType string
+	AVGCPU     float64
+}
 
 func newECSClient(cfg aws.Config) *ecs.Client {
 	return ecs.NewFromConfig(cfg)
@@ -37,14 +58,6 @@ func ListClusters(region string) (clusters []string, err error) {
 	return clusters, nil
 }
 
-type describeCluster struct {
-	Name           string
-	ContainerHosts int32
-	RunningTasks   int32
-	PendingTasks   int32
-	Services       int32
-}
-
 func DescribeCluster(region, cluster string) ([]describeCluster, error) {
 	cfg, err := shared.LoadAWSConfig(region)
 	if err != nil {
@@ -56,6 +69,10 @@ func DescribeCluster(region, cluster string) ([]describeCluster, error) {
 		Clusters: []string{cluster},
 	}
 
+	// Time vars for cloudwatch queries
+	startTime := time.Now().Add(-5 * time.Minute)
+	endTime := time.Now()
+
 	output, err := client.DescribeClusters(context.Background(), input)
 	if err != nil {
 		return nil, fmt.Errorf("unable to describe cluster: %v", err)
@@ -64,11 +81,31 @@ func DescribeCluster(region, cluster string) ([]describeCluster, error) {
 	var chosenCluster []describeCluster
 
 	for _, clusters := range output.Clusters {
+		// Use the clusterName as the metric dimension
+		dimensons := []types.Dimension{
+			{Name: aws.String("ClusterName"), Value: aws.String(*clusters.ClusterName)},
+		}
+		// Define the struct for the GetMetricStats function
+		metric := &MetricStats{
+			Namespace:  "AWS/ECS",
+			MetricName: "CPUUtilization",
+			Dimensions: dimensons,
+			StartTime:  &startTime,
+			EndTime:    &endTime,
+			Period:     300,
+			Statistics: []types.Statistic{types.StatisticAverage},
+		}
+		// Get the average CPU usage for the last 5 min
+		output, err := GetMetricStats(region, metric)
+		if err != nil {
+			return nil, fmt.Errorf("error: %v", err)
+		}
 		chosenCluster = append(chosenCluster, describeCluster{
 			Name:           *clusters.ClusterName,
 			ContainerHosts: clusters.RegisteredContainerInstancesCount,
 			RunningTasks:   clusters.RunningTasksCount,
 			Services:       clusters.ActiveServicesCount,
+			AVGCPU:         output,
 		})
 	}
 
@@ -100,14 +137,6 @@ func ListServices(region, cluster string) (services []string, err error) {
 	return services, nil
 }
 
-type describeService struct {
-	Name       string
-	Desired    int32
-	Running    int32
-	Pending    int32
-	LaunchType string
-}
-
 func DescribeService(region, cluster, service string) ([]describeService, error) {
 	cfg, err := shared.LoadAWSConfig(region)
 	if err != nil {
@@ -120,20 +149,51 @@ func DescribeService(region, cluster, service string) ([]describeService, error)
 		Services: []string{service},
 	}
 
+	// Time vars for cloudwatch queries
+	startTime := time.Now().Add(-5 * time.Minute)
+	endTime := time.Now()
+
 	output, err := client.DescribeServices(context.Background(), input)
 	if err != nil {
 		return nil, fmt.Errorf("unable to describe service: %v", err)
 	}
 
+	parts := strings.Split(cluster, "/")
+	if len(parts) < 2 {
+		return nil, fmt.Errorf("invalid cluster ARN: %s", cluster)
+	}
+	clusterName := parts[len(parts)-1]
+
 	var chosenService []describeService
 
 	for _, i := range output.Services {
+		// Use the clusterName as the metric dimension
+		dimensons := []types.Dimension{
+			{Name: aws.String("ClusterName"), Value: aws.String(clusterName)},
+			{Name: aws.String("ServiceName"), Value: aws.String(*i.ServiceName)},
+		}
+		// Define the struct for the GetMetricStats function
+		metric := &MetricStats{
+			Namespace:  "AWS/ECS",
+			MetricName: "CPUUtilization",
+			Dimensions: dimensons,
+			StartTime:  &startTime,
+			EndTime:    &endTime,
+			Period:     300,
+			Statistics: []types.Statistic{types.StatisticAverage},
+		}
+		// Get the average CPU usage for the last 5 min
+		output, err := GetMetricStats(region, metric)
+		if err != nil {
+			return nil, fmt.Errorf("error: %v", err)
+		}
 		chosenService = append(chosenService, describeService{
 			Name:       *i.ServiceName,
 			Desired:    i.DesiredCount,
 			Running:    i.RunningCount,
 			Pending:    i.PendingCount,
 			LaunchType: string(i.LaunchType),
+			AVGCPU:     output,
 		})
 	}
 	return chosenService, nil

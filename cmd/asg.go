@@ -39,12 +39,14 @@ Name:            %s
 MinSize:         %d
 MaxSize:         %d
 DesiredCapacity: %d
+AVG CPU (5 min): %.1f%%
 
 `,
 				asg.Name,
 				asg.MinSize,
 				asg.MaxSize,
 				asg.DesiredCapacity,
+				asg.AVGCPU,
 			)
 		}
 		return nil

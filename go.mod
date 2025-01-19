@@ -6,6 +6,7 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.33.0
 	github.com/aws/aws-sdk-go-v2/config v1.28.10
 	github.com/aws/aws-sdk-go-v2/service/autoscaling v1.51.6
+	github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.43.9
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.198.3
 	github.com/aws/aws-sdk-go-v2/service/ecs v1.53.4
 	github.com/manifoldco/promptui v0.9.0
